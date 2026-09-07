@@ -26,7 +26,7 @@ router.post('/login', async (req, res) => {
     }
     try {
         if (await bcrypt.compare(req.body.password, user.password)) {
-            const accessToken = jwt.sign({ name: user.name }, process.env.SECRET_KEY, { expiresIn: '24h' });
+            const accessToken = jwt.sign({ userId: user._id, name: user.name }, process.env.SECRET_KEY, { expiresIn: '24h' });
             res.json({ accessToken: accessToken });
         } else {
             res.send('Not Allowed');

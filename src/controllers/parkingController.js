@@ -4,8 +4,10 @@ const Parking = require('../models/Parking');
 exports.kendaraanMasuk = async (req, res) => {
     try {
         const { platNomor } = req.body;
-        const parkirBaru = new Parking({ platNomor });
-        await parkirBaru.save();
+        const parkirBaru = new Parking({
+            userId: req.userId,
+            platNomor
+        });
 
         res.status(201).json({
             message: 'Kendaraan berhasil masuk',
@@ -50,7 +52,7 @@ exports.kendaraanKeluar = async (req, res) => {
 // Fungsi Read All: Melihat semua data parkir
 exports.lihatSemuaParkir = async (req, res) => {
     try {
-        const dataParkir = await Parking.find();
+        const dataParkir = await Parking.find({ userId: req.userId });
         res.json(dataParkir);
     } catch (error) {
         res.status(500).json({ message: error.message });
