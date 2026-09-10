@@ -1,22 +1,23 @@
 # Gandaria City Mall - Parking System API
 
-RESTful API backend untuk mengelola operasional sistem parkir di Gandaria City Mall. Proyek ini mencakup alur pencatatan kendaraan masuk, penghitungan durasi dan biaya parkir otomatis saat kendaraan keluar, manajemen data parkir (CRUD), serta sistem otorisasi pengguna berbasis JSON Web Token (JWT).
+RESTful API backend *enterprise-grade* untuk mengelola operasional sistem parkir di Gandaria City Mall. Proyek ini mencakup alur pencatatan kendaraan masuk, penghitungan durasi dan biaya parkir otomatis, manajemen data parkir dengan *pagination*, serta sistem keamanan tingkat produksi.
 
 ## Fitur Utama
 
-- **Autentikasi & Otorisasi:** Registrasi dan login operator dengan enkripsi password menggunakan `bcrypt` dan proteksi endpoint menggunakan `jsonwebtoken` (JWT).
-- **Check-In Kendaraan:** Pencatatan plat nomor dan waktu masuk kendaraan secara otomatis.
-- **Check-Out & Kalkulasi Biaya:** Penghitungan durasi parkir berbasis jam (pembulatan ke atas) dengan tarif dinamis (default: Rp 5.000/jam).
-- **Manajemen Data (CRUD):** Melihat riwayat seluruh kendaraan parkir dan menghapus data parkir.
-- **Logging Middleware:** Pencatatan otomatis setiap HTTP request method dan URL yang masuk ke server.
+* **Autentikasi & Otorisasi:** Registrasi dan login operator menggunakan enkripsi `bcrypt` dan proteksi endpoint berbasis JSON Web Token (JWT).
+* **Keamanan Tingkat Lanjut:** Proteksi *header* HTTP menggunakan `helmet`, kebijakan lintas-sumber `cors`, dan pencegahan serangan *brute-force*/*DDoS* menggunakan `express-rate-limit`.
+* **Validasi Input Ketat:** Pengecekan payload dan format data (contoh: validasi format plat nomor) sebelum mencapai *controller* menggunakan `joi`.
+* **Check-In & Check-Out:** Pencatatan otomatis waktu masuk, keluar, dan kalkulasi tarif berbasis jam (default: Rp 5.000/jam) yang terhubung (berelasi) langsung dengan ID operator yang bertugas.
+* **Manajemen Data & Pagination:** Fitur pengambilan riwayat parkir yang dioptimalkan dengan *filtering* status, *sorting*, dan *pagination* agar server tetap stabil meski data mencapai jutaan baris.
+* **Logging Middleware:** Pencatatan lalu lintas HTTP request secara *real-time*.
 
 ## Tech Stack
 
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **Database:** MongoDB
-- **ODM:** Mongoose
-- **Security & Utilities:** JSON Web Token (JWT), Bcrypt, Dotenv, Body-Parser
+* **Runtime:** Node.js
+* **Framework:** Express.js
+* **Database:** MongoDB & Mongoose (ODM)
+* **Keamanan & Validasi:** Helmet, CORS, Express-Rate-Limit, Joi, Bcrypt, JWT
+* **Utilities:** Dotenv, Body-Parser
 
 ## Struktur Direktori
 
@@ -24,19 +25,20 @@ RESTful API backend untuk mengelola operasional sistem parkir di Gandaria City M
 parking-system/
 ├── src/
 │   ├── controllers/
-│   │   └── parkingController.js   # Logika bisnis transaksi parkir
+│   │   └── parkingController.js   # Logika transaksi, kalkulasi, & pagination
 │   ├── middleware/
-│   │   ├── authenticateToken.js   # Validasi bearer token JWT
-│   │   └── logger.js              # Request logger
+│   │   ├── authenticateToken.js   # Ekstraksi ID & validasi bearer token
+│   │   ├── logger.js              # Request logger
+│   │   └── validator.js           # Skema validasi input Joi
 │   ├── models/
-│   │   ├── Parking.js             # Skema koleksi parkir
-│   │   └── User.js                # Skema koleksi user/operator
+│   │   ├── Parking.js             # Skema koleksi parkir (Berelasi dengan User)
+│   │   └── User.js                # Skema koleksi operator
 │   ├── routes/
-│   │   ├── parkingRoutes.js       # Routing endpoint parkir
-│   │   └── user.js                # Routing endpoint user (auth)
-│   ├── app.js                     # Inisialisasi Express & server
+│   │   ├── parkingRoutes.js       # Routing endpoint operasional parkir
+│   │   └── user.js                # Routing endpoint autentikasi
+│   ├── app.js                     # Inisialisasi Express, Middleware Keamanan & Server
 │   └── db.js                      # Konfigurasi koneksi MongoDB
-├── .env                           # Environment variables (diabaikan oleh git)
+├── .env                           # Environment variables
 ├── .gitignore
 ├── package.json
 └── README.md
@@ -46,22 +48,23 @@ parking-system/
 ## Instalasi & Menjalankan
 
 1. **Clone repositori:**
+
 ```bash
 git clone [https://github.com/USERNAME_KAMU/NAMA_REPOSITORY.git](https://github.com/USERNAME_KAMU/NAMA_REPOSITORY.git)
 cd NAMA_REPOSITORY
 
 ```
 
-
 2. **Instal dependensi:**
+
 ```bash
 npm install
 
 ```
 
-
 3. **Konfigurasi Environment Variables:**
 Buat file `.env` pada direktori root dan sesuaikan konfigurasinya:
+
 ```env
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/parking_db
@@ -69,15 +72,14 @@ SECRET_KEY=rahasia_super_secure_key
 
 ```
 
-
 4. **Jalankan aplikasi:**
+
 ```bash
 node src/app.js
 
 ```
 
-
-Aplikasi akan berjalan pada `http://localhost:3000`.
+Aplikasi akan berjalan pada `http://localhost:3000` dengan pembatasan 100 *request* per 15 menit per IP.
 
 ## Dokumentasi Endpoint API
 
@@ -90,11 +92,11 @@ Aplikasi akan berjalan pada `http://localhost:3000`.
 
 ### 2. Operasional Parkir (`/api/parking`)
 
-> **Catatan:** Semua rute di bawah ini wajib menyertakan Header: `Authorization: Bearer <ACCESS_TOKEN>`
+> **Catatan Penting:** Semua rute operasional wajib menyertakan Header: `Authorization: Bearer <ACCESS_TOKEN>`
 
-| Method | Endpoint | Deskripsi | Body / Parameter |
+| Method | Endpoint | Deskripsi | Body / Query / Parameter |
 | --- | --- | --- | --- |
-| `POST` | `/api/parking/in` | Kendaraan masuk (Check-in) | `{"platNomor": "B 1234 CD"}` |
-| `PUT` | `/api/parking/out/:id` | Kendaraan keluar & kalkulasi biaya | Param `id`: ID karcis |
-| `GET` | `/api/parking/` | Menampilkan seluruh data transaksi | - |
-| `DELETE` | `/api/parking/:id` | Menghapus riwayat transaksi | Param `id`: ID karcis |
+| `POST` | `/api/parking/in` | Kendaraan masuk (Check-in). Terdapat validasi format string Plat Nomor. | **Body:** `{"platNomor": "B 1234 CD"}` |
+| `PUT` | `/api/parking/out/:id` | Kendaraan keluar & kalkulasi biaya dinamis. | **Param:** `id` (ID Karcis) |
+| `GET` | `/api/parking/` | Menampilkan seluruh transaksi milik operator dengan format paginasi. | **Query Opsional:** `?status=IN&page=1&limit=10&sortBy=waktuMasuk&order=desc` |
+| `DELETE` | `/api/parking/:id` | Menghapus riwayat transaksi. | **Param:** `id` (ID Karcis) |

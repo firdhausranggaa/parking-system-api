@@ -1,6 +1,5 @@
 const Parking = require('../models/Parking');
 
-// Fungsi Kendaraan Masuk
 exports.kendaraanMasuk = async (req, res) => {
     try {
         const { platNomor } = req.body;
@@ -18,7 +17,6 @@ exports.kendaraanMasuk = async (req, res) => {
     }
 };
 
-// Fungsi Kendaraan Keluar
 exports.kendaraanKeluar = async (req, res) => {
     try {
         const { id } = req.params;
@@ -31,12 +29,11 @@ exports.kendaraanKeluar = async (req, res) => {
         parkir.waktuKeluar = Date.now();
         parkir.status = 'OUT';
 
-        // Kalkulasi durasi (dalam milidetik dikonversi ke jam)
         const durasiMs = new Date(parkir.waktuKeluar).getTime() - new Date(parkir.waktuMasuk).getTime();
-        const durasiJam = Math.ceil(durasiMs / (1000 * 60 * 60)); // pembulatan ke atas untuk jam
+        const durasiJam = Math.ceil(durasiMs / (1000 * 60 * 60));
 
         const tarifPerJam = 5000;
-        parkir.biaya = durasiJam * tarifPerJam || tarifPerJam; // Jika kurang dari 1 jam, tetap bayar 1 jam
+        parkir.biaya = durasiJam * tarifPerJam || tarifPerJam;
 
         await parkir.save();
 
@@ -49,17 +46,35 @@ exports.kendaraanKeluar = async (req, res) => {
     }
 };
 
-// Fungsi Read All: Melihat semua data parkir
 exports.lihatSemuaParkir = async (req, res) => {
     try {
-        const dataParkir = await Parking.find({ userId: req.userId });
-        res.json(dataParkir);
+        const { status, sortBy = 'waktuMasuk', order = 'desc', page = 1, limit = 10 } = req.query;
+
+        const filter = { userId: req.userId };
+        if (status) filter.status = status.toUpperCase();
+
+        const limitNum = parseInt(limit, 10);
+        const skip = (parseInt(page, 10) - 1) * limitNum;
+
+        const dataParkir = await Parking.find(filter)
+            .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
+            .skip(skip)
+            .limit(limitNum)
+            .populate('userId', 'name email -_id');
+
+        const totalData = await Parking.countDocuments(filter);
+
+        res.json({
+            totalData,
+            currentPage: parseInt(page, 10),
+            totalPages: Math.ceil(totalData / limitNum),
+            data: dataParkir
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// Fungsi Delete: Menghapus data parkir berdasarkan ID
 exports.hapusDataParkir = async (req, res) => {
     try {
         const parkir = await Parking.findById(req.params.id);
