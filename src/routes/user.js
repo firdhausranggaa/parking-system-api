@@ -26,13 +26,13 @@ router.post('/login', async (req, res) => {
     }
     try {
         if (await bcrypt.compare(req.body.password, user.password)) {
-            const accessToken = jwt.sign({ userId: user._id, name: user.name }, process.env.SECRET_KEY, { expiresIn: '24h' });
+            const accessToken = jwt.sign({ userId: user._id.toString(), name: user.name }, process.env.SECRET_KEY, { expiresIn: '24h' });
             res.json({ accessToken: accessToken });
         } else {
-            res.send('Not Allowed');
+            res.status(401).json({ message: 'Password salah. Akses ditolak.' });
         }
     } catch (error) {
-        res.status(500).send('Error logging in');
+        res.status(500).json({ message: 'Error logging in' });
     }
 });
 

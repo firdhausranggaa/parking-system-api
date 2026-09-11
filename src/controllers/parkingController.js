@@ -8,6 +8,8 @@ exports.kendaraanMasuk = async (req, res) => {
             platNomor
         });
 
+        await parkirBaru.save();
+
         res.status(201).json({
             message: 'Kendaraan berhasil masuk',
             data: parkirBaru
@@ -51,7 +53,7 @@ exports.lihatSemuaParkir = async (req, res) => {
         const { status, sortBy = 'waktuMasuk', order = 'desc', page = 1, limit = 10 } = req.query;
 
         const filter = { userId: req.userId };
-        if (status) filter.status = status.toUpperCase();
+        if (status) filter.status = status.trim().toUpperCase();
 
         const limitNum = parseInt(limit, 10);
         const skip = (parseInt(page, 10) - 1) * limitNum;
